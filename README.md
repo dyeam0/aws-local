@@ -1,6 +1,6 @@
-# File Metadata Manager - LocalStack TPM Challenge
+# File Metadata Manager
 
-A simple AWS serverless application that demonstrates S3, Lambda, and DynamoDB integration using LocalStack.
+A serverless file upload application built with AWS services (S3, Lambda, DynamoDB) and tested locally using LocalStack.
 
 ## Overview
 
