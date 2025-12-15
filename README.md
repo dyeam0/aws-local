@@ -9,6 +9,8 @@ This application allows users to:
 2. Automatically extract and store file metadata in DynamoDB
 3. View all uploaded file metadata through a web interface
 
+<img width="1863" height="1676" alt="File-metadata-screenshot" src="https://github.com/user-attachments/assets/a2fd1da8-bff5-4cde-8b33-0c76759806af" />
+
 ## Architecture
 
 ```
