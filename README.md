@@ -1,6 +1,6 @@
 # File Metadata Manager
 
-A serverless file upload application built with AWS services (S3, Lambda, DynamoDB) and tested locally using LocalStack.
+A serverless file upload application built with AWS services (S3, Lambda, DynamoDB).
 
 ## Overview
 
