@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Metadata Manager - LocalStack Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .upload-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .file-input-wrapper {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        input[type="file"] {
+            flex: 1;
+            padding: 12px;
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #f8f9ff;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.show {
+            display: block;
+        }
+        
+        .metadata-section h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .metadata-count {
+            color: #667eea;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }
+        
+        .metadata-table {
+            width: 100%;
+            border-collapse: collapse;
+            overflow-x: auto;
+        }
+        
+        .metadata-table th,
+        .metadata-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .metadata-table th {
+            background: #f8f9ff;
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .metadata-table tr:hover {
+            background: #f8f9ff;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .config-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .config-section input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .config-section button {
+            background: #ffa502;
+            margin-top: 10px;
+        }
+        
+        .config-section button:hover {
+            background: #ff7f00;
+        }
+        
+        .file-size {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .timestamp {
+            color: #999;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📁 File Metadata Manager</h1>
+            <p class="subtitle">Upload files to S3 and view their metadata stored in DynamoDB</p>
+        </header>
+        
+        <div class="card">
+            <div class="config-section">
+                <h3>⚙️ Lambda Function URLs</h3>
+                <p style="font-size: 0.9rem; margin-bottom: 10px;">Paste your Lambda function URLs below:</p>
+                <input type="text" id="presignUrl" placeholder="Presign Lambda URL (for uploads)">
+                <input type="text" id="metadataUrl" placeholder="Get Metadata Lambda URL (for viewing files)">
+                <button onclick="saveConfig()">Apply Configuration</button>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>📤 Upload File</h2>
+            <div class="upload-section">
+                <div class="file-input-wrapper">
+                    <input type="file" id="fileInput" />
+                    <button onclick="uploadFile()" id="uploadBtn">Upload</button>
+                </div>
+                <div class="status" id="uploadStatus"></div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="metadata-section">
+                <h2>📊 File Metadata</h2>
+                <div class="metadata-count" id="fileCount">Loading...</div>
+                <button onclick="refreshMetadata()" style="margin-bottom: 15px;">🔄 Refresh</button>
+                <div id="metadataContainer">
+                    <div class="no-data">No files uploaded yet. Upload a file to get started!</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load saved configuration
+        window.addEventListener('load', () => {
+            const presignUrl = 'http://fse5ifbosr6m3j2chqp8e6sn7mdz0n17.lambda-url.us-east-1.localhost.localstack.cloud:4566';
+            const metadataUrl = 'http://6vm8a4zjlgnqehuq3975u08pni8lx8b6.lambda-url.us-east-1.localhost.localstack.cloud:4566';
+            document.getElementById('presignUrl').value = presignUrl;
+            document.getElementById('metadataUrl').value = metadataUrl;
+            
+            if (metadataUrl) {
+                refreshMetadata();
+            }
+        });
+        
+        function saveConfig() {
+            const presignUrl = 'http://fse5ifbosr6m3j2chqp8e6sn7mdz0n17.lambda-url.us-east-1.localhost.localstack.cloud:4566';
+            const metadataUrl = 'http://6vm8a4zjlgnqehuq3975u08pni8lx8b6.lambda-url.us-east-1.localhost.localstack.cloud:4566';
+            
+            localStorage.setItem('presignUrl', presignUrl);
+            localStorage.setItem('metadataUrl', metadataUrl);
+            
+            showStatus('uploadStatus', 'Configuration saved! You can now upload files and view metadata.', 'success');
+            
+            if (metadataUrl) {
+                refreshMetadata();
+            }
+        }
+        
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showStatus('uploadStatus', 'Please select a file first.', 'error');
+                return;
+            }
+            
+            const presignUrl = 'http://fse5ifbosr6m3j2chqp8e6sn7mdz0n17.lambda-url.us-east-1.localhost.localstack.cloud:4566';
+            if (!presignUrl) {
+                showStatus('uploadStatus', 'Please configure the Presign Lambda URL first.', 'error');
+                return;
+            }
+            
+            const uploadBtn = document.getElementById('uploadBtn');
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Uploading...';
+            
+            try {
+                // Call presign Lambda with filename in URL path (like image resizer)
+                const urlToCall = presignUrl + '/' + file.name;
+                console.log('Calling presign URL:', urlToCall);
+                
+                const presignResponse = await fetch(urlToCall);
+                
+                if (!presignResponse.ok) {
+                    throw new Error(`Presign request failed: ${presignResponse.statusText}`);
+                }
+                
+                const presignData = await presignResponse.json();
+                console.log('Got presigned POST data:', presignData);
+                
+                // Upload file to S3 using presigned POST
+                const formData = new FormData();
+                Object.keys(presignData.fields).forEach(key => {
+                    formData.append(key, presignData.fields[key]);
+                });
+                formData.append('file', file);
+                
+                const uploadResponse = await fetch(presignData.url, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (uploadResponse.ok || uploadResponse.status === 204) {
+                    showStatus('uploadStatus', `File "${file.name}" uploaded successfully! Refreshing metadata...`, 'success');
+                    fileInput.value = '';
+                    
+                    // Wait a moment for Lambda to process, then refresh
+                    setTimeout(refreshMetadata, 1500);
+                } else {
+                    const errorText = await uploadResponse.text();
+                    console.error('Upload failed:', errorText);
+                    throw new Error(`Upload failed: ${uploadResponse.statusText}`);
+                }
+                
+            } catch (error) {
+                console.error('Upload error:', error);
+                showStatus('uploadStatus', `Error uploading file: ${error.message}`, 'error');
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Upload';
+            }
+        }
+        
+        async function refreshMetadata() {
+            const metadataUrl = 'http://6vm8a4zjlgnqehuq3975u08pni8lx8b6.lambda-url.us-east-1.localhost.localstack.cloud:4566';
+            if (!metadataUrl) {
+                document.getElementById('fileCount').textContent = 'Configure Lambda URLs above to view metadata.';
+                return;
+            }
+            
+            document.getElementById('fileCount').textContent = 'Loading...';
+            
+            try {
+                const response = await fetch(metadataUrl);
+                const data = await response.json();
+                
+                displayMetadata(data.files || [], data.count || 0);
+                
+            } catch (error) {
+                console.error('Error fetching metadata:', error);
+                document.getElementById('metadataContainer').innerHTML = 
+                    '<div class="no-data">Error loading metadata. Check console for details.</div>';
+            }
+        }
+        
+        function displayMetadata(files, count) {
+            document.getElementById('fileCount').textContent = 
+                `Total files: ${count} ${count === 1 ? 'file' : 'files'}`;
+            
+            if (files.length === 0) {
+                document.getElementById('metadataContainer').innerHTML = 
+                    '<div class="no-data">No files uploaded yet. Upload a file to get started!</div>';
+                return;
+            }
+            
+            const table = `
+                <table class="metadata-table">
+                    <thead>
+                        <tr>
+                            <th>Filename</th>
+                            <th>Size</th>
+                            <th>Type</th>
+                            <th>Uploaded</th>
+                            <th>Bucket</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${files.map(file => `
+                            <tr>
+                                <td><strong>${file.filename}</strong></td>
+                                <td class="file-size">${formatBytes(file.size_bytes)}</td>
+                                <td>${file.content_type || 'unknown'}</td>
+                                <td class="timestamp">${formatTimestamp(file.upload_timestamp)}</td>
+                                <td>${file.bucket}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            
+            document.getElementById('metadataContainer').innerHTML = table;
+        }
+        
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+        
+        function formatTimestamp(timestamp) {
+            if (!timestamp) return 'Unknown';
+            const date = new Date(timestamp);
+            return date.toLocaleString();
+        }
+        
+        function showStatus(elementId, message, type) {
+            const statusEl = document.getElementById(elementId);
+            statusEl.textContent = message;
+            statusEl.className = `status ${type} show`;
+            
+            setTimeout(() => {
+                statusEl.classList.remove('show');
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
